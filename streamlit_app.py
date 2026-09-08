@@ -94,7 +94,12 @@ if not st.session_state.access_token:
     st.warning("Complete Step 1 first — no access token yet.")
 else:
     colA, colB, colC = st.columns(3)
-    expiry_date = colA.date_input("Expiry date")
+    auto_expiry = colA.checkbox(
+        "Auto-detect nearest expiry per symbol (recommended)", value=True,
+        help="Nifty is usually weekly; BankNifty and most stocks are monthly only. "
+             "Auto-detect avoids picking a date that doesn't exist for a given symbol.",
+    )
+    manual_expiry = colA.date_input("Manual expiry (used only if auto-detect is off)")
     n_each_side = colB.number_input("Strikes above/below ATM", value=10, min_value=1, max_value=25)
     preset = colC.selectbox(
         "Quick symbol preset",
@@ -116,10 +121,11 @@ else:
         for i, symbol in enumerate(symbols):
             progress.progress((i) / len(symbols), text=f"Fetching {symbol}...")
             try:
+                expiry_arg = None if auto_expiry else manual_expiry.strftime("%Y-%m-%d")
                 results[symbol] = run_pipeline(
                     st.session_state.access_token,
                     symbol,
-                    expiry_date.strftime("%Y-%m-%d"),
+                    expiry_arg,
                     int(n_each_side),
                 )
             except Exception as e:
@@ -163,3 +169,30 @@ else:
                         "Add this to the underlying's chart (index spot/futures, or the "
                         "stock itself) — not an option contract's own chart."
                     )
+
+        # ── Step 3: one combined script with a dropdown, instead of one file per symbol ─
+        if results:
+            st.divider()
+            st.header("Step 3 — Combined script (one file, dropdown to pick symbol)")
+            st.caption(
+                "Bundles everything fetched above into a single Pine script with a "
+                "Symbol dropdown in its settings, instead of separate files per symbol. "
+                "Still apply it to the matching underlying's own chart and select that "
+                "same symbol in the dropdown — the ATM auto-tracking only makes sense "
+                "against that symbol's own live price."
+            )
+            if st.button("Build combined dropdown script"):
+                from upstox_generator import build_multi_pine_text
+                try:
+                    combined_pine = build_multi_pine_text(results)
+                    st.session_state.combined_pine = combined_pine
+                except Exception as e:
+                    st.error(f"Couldn't build combined script: {e}")
+
+            if st.session_state.get("combined_pine"):
+                st.code(st.session_state.combined_pine, language="text")
+                st.download_button(
+                    "Download combined.pine",
+                    st.session_state.combined_pine,
+                    file_name="reversal_zones_multi_symbol.pine",
+                )
