@@ -119,9 +119,40 @@ else:
     )
 
     default_symbols = "NIFTY, BANKNIFTY" if preset == "NIFTY + BANKNIFTY" else ""
+
+    fo_col1, fo_col2 = st.columns([1, 1])
+    if fo_col1.button("Load all NSE F&O stocks"):
+        try:
+            with st.spinner("Reading Upstox's instrument file for the current F&O list..."):
+                from upstox_generator import list_fno_underlyings
+                fno_stocks = list_fno_underlyings()
+            if fno_stocks:
+                st.session_state.fno_symbols_text = ", ".join(["NIFTY", "BANKNIFTY"] + fno_stocks)
+                st.success(f"Loaded {len(fno_stocks)} F&O stocks (plus NIFTY + BANKNIFTY).")
+            else:
+                st.warning(
+                    "Got an empty list back. Click 'Debug: show raw F&O record' to see "
+                    "the actual field names Upstox is using right now, and send that to me."
+                )
+        except Exception as e:
+            st.error(f"Couldn't load the F&O list: {e}")
+
+    if fo_col2.button("Debug: show raw F&O record"):
+        try:
+            from upstox_generator import debug_sample_fo_instrument
+            sample = debug_sample_fo_instrument()
+            st.json(sample if sample else {"result": "No NSE_FO/FUT record found at all."})
+        except Exception as e:
+            st.error(f"Debug call failed: {e}")
+
+    st.caption(
+        "Warning: fetching 180+ stocks takes a while (one option-chain call per symbol) "
+        "and may hit Upstox's rate limits. Consider trimming the list before generating."
+    )
+
     symbols_raw = st.text_input(
         "Symbols (comma-separated — NSE trading symbols for indices/stocks)",
-        value=default_symbols,
+        value=st.session_state.get("fno_symbols_text", default_symbols),
         placeholder="e.g. NIFTY, BANKNIFTY, RELIANCE, HDFCBANK, TCS",
     )
     symbols = [s.strip().upper() for s in symbols_raw.split(",") if s.strip()]

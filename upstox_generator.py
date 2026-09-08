@@ -95,7 +95,50 @@ def resolve_equity_instrument_key(trading_symbol: str) -> str:
     )
 
 
-def resolve_instrument_key(symbol: str) -> str:
+def list_fno_underlyings():
+    """Returns the current list of NSE stocks that have F&O contracts,
+    derived directly from Upstox's own instrument master (refreshed daily
+    by Upstox) rather than a hardcoded list that would drift out of date
+    as NSE periodically adds/removes stocks from the F&O segment.
+
+    Written defensively: Upstox's community has reported field-name
+    inconsistencies between their bulk file and their API responses, so
+    this tries a few plausible field names rather than assuming one.
+    If it returns an empty list, use debug_sample_fo_instrument() below
+    to see the raw field names and report back.
+    """
+    instruments = load_instrument_master()
+    stocks = set()
+    for inst in instruments:
+        if inst.get("segment") != "NSE_FO":
+            continue
+        if inst.get("instrument_type") != "FUT":
+            continue  # one FUT contract per underlying is enough to enumerate the universe
+        u_type = (inst.get("underlying_type") or inst.get("instrument_type") or "").upper()
+        if u_type == "INDEX":
+            continue
+        u_sym = (
+            inst.get("underlying_symbol")
+            or inst.get("asset_symbol")
+            or inst.get("name")
+        )
+        if u_sym and u_sym.upper() not in INDEX_INSTRUMENT_KEYS:
+            stocks.add(u_sym.upper())
+    return sorted(stocks)
+
+
+def debug_sample_fo_instrument():
+    """Returns one raw NSE_FO/FUT record as-is, so you can see the actual
+    field names Upstox is currently using if list_fno_underlyings() comes
+    back empty or wrong."""
+    instruments = load_instrument_master()
+    for inst in instruments:
+        if inst.get("segment") == "NSE_FO" and inst.get("instrument_type") == "FUT":
+            return inst
+    return None
+
+
+
     if symbol.upper() in INDEX_INSTRUMENT_KEYS:
         return INDEX_INSTRUMENT_KEYS[symbol.upper()]
     return resolve_equity_instrument_key(symbol)
