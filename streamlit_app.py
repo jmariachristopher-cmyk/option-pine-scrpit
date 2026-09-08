@@ -19,23 +19,43 @@ from upstox_generator import get_login_url, get_access_token, run_pipeline
 st.set_page_config(page_title="Options Reversal Zones — Upstox", layout="wide")
 st.title("Options Reversal Zones — Upstox live generator")
 
-# Prefer values from Streamlit secrets if you've set them (Settings -> Secrets),
-# so you don't retype client_id/secret each day.
-default_client_id = st.secrets.get("UPSTOX_CLIENT_ID", "")
-default_client_secret = st.secrets.get("UPSTOX_CLIENT_SECRET", "")
-default_redirect_uri = st.secrets.get("UPSTOX_REDIRECT_URI", "https://localhost")
-
 if "access_token" not in st.session_state:
     st.session_state.access_token = ""
 
-# ── Step 1: daily login (the one part that can't be automated) ─────────────
-st.header("Step 1 — Get today's access token")
-st.caption(
-    "Upstox tokens expire daily. This is a one-time, ~30-second click-through "
-    "each morning — there's no official way to skip it for Upstox."
-)
+# ── Step 1: paste today's access token ──────────────────────────────────────
+# However you generate it (Upstox's own login page, Postman, curl, this
+# app's optional helper below) -- this app just needs the final token
+# string. Tokens expire daily (~3:30 AM IST); Upstox has no headless
+# login, so a fresh token is required each morning regardless of method.
+st.header("Step 1 — Paste today's Upstox access token")
 
-with st.expander("Log in to Upstox", expanded=not st.session_state.access_token):
+token_input = st.text_input(
+    "Access Token",
+    value=st.session_state.access_token,
+    type="password",
+    placeholder="eyJ0eXAiOiJKV1Qi...",
+)
+if token_input:
+    st.session_state.access_token = token_input.strip()
+
+if st.session_state.access_token:
+    st.success("Token set — you can generate scripts below.")
+else:
+    st.info("Paste your access token above to continue.")
+
+with st.expander("Don't have a token yet? Optional built-in login helper"):
+    st.caption(
+        "This walks through Upstox's login flow if you don't already have a "
+        "way to generate a token. If a `code` exchange fails with 401, the "
+        "usual causes are: the code was pasted after it expired (they're "
+        "valid only ~2 minutes and single-use), or Client ID / Client Secret "
+        "/ Redirect URI don't match exactly what's registered on your Upstox "
+        "app — double check for typos or a truncated paste."
+    )
+    default_client_id = st.secrets.get("UPSTOX_CLIENT_ID", "")
+    default_client_secret = st.secrets.get("UPSTOX_CLIENT_SECRET", "")
+    default_redirect_uri = st.secrets.get("UPSTOX_REDIRECT_URI", "https://localhost")
+
     c1, c2, c3 = st.columns(3)
     client_id = c1.text_input("Client ID", value=default_client_id)
     client_secret = c2.text_input("Client Secret", value=default_client_secret, type="password")
@@ -45,8 +65,8 @@ with st.expander("Log in to Upstox", expanded=not st.session_state.access_token)
         login_url = get_login_url(client_id, redirect_uri)
         st.markdown(f"1. [Click here to log in to Upstox]({login_url})")
         st.caption(
-            "2. After logging in, Upstox redirects you to your Redirect URI with "
-            "`?code=...` in the address bar. Copy just that code value."
+            "2. Immediately after logging in, copy the `code=...` value from "
+            "the redirected URL and paste it below within ~2 minutes."
         )
         auth_code = st.text_input("3. Paste the code here")
 
@@ -60,14 +80,10 @@ with st.expander("Log in to Upstox", expanded=not st.session_state.access_token)
                     with st.spinner("Exchanging code for access token..."):
                         token = get_access_token(client_id, client_secret, redirect_uri, auth_code)
                     st.session_state.access_token = token
-                    st.success("Access token acquired for today.")
+                    st.success("Access token acquired — filled into the box above.")
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Token exchange failed: {e}")
-    else:
-        st.info("Enter your Client ID and Redirect URI to get a login link.")
-
-if st.session_state.access_token:
-    st.success("Logged in for today — you can generate scripts below.")
 
 st.divider()
 
