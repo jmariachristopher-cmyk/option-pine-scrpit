@@ -22,6 +22,18 @@ st.title("Options Reversal Zones — Upstox live generator")
 if "access_token" not in st.session_state:
     st.session_state.access_token = ""
 
+
+def safe_secret(key, default=""):
+    """st.secrets.get() raises StreamlitSecretNotFoundError -- not just
+    returning the default -- when no secrets.toml exists at all anywhere
+    (not even an empty one). That happens on any fresh deploy before
+    secrets are configured, so a plain st.secrets.get(...) call would
+    crash the whole app before it ever renders anything."""
+    try:
+        return st.secrets.get(key, default)
+    except Exception:
+        return default
+
 # ── Step 1: paste today's access token ──────────────────────────────────────
 # However you generate it (Upstox's own login page, Postman, curl, this
 # app's optional helper below) -- this app just needs the final token
@@ -52,9 +64,9 @@ with st.expander("Don't have a token yet? Optional built-in login helper"):
         "/ Redirect URI don't match exactly what's registered on your Upstox "
         "app — double check for typos or a truncated paste."
     )
-    default_client_id = st.secrets.get("UPSTOX_CLIENT_ID", "")
-    default_client_secret = st.secrets.get("UPSTOX_CLIENT_SECRET", "")
-    default_redirect_uri = st.secrets.get("UPSTOX_REDIRECT_URI", "https://localhost")
+    default_client_id = safe_secret("UPSTOX_CLIENT_ID", "")
+    default_client_secret = safe_secret("UPSTOX_CLIENT_SECRET", "")
+    default_redirect_uri = safe_secret("UPSTOX_REDIRECT_URI", "https://localhost")
 
     c1, c2, c3 = st.columns(3)
     client_id = c1.text_input("Client ID", value=default_client_id)

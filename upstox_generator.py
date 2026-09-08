@@ -475,7 +475,7 @@ def build_multi_pine_text(results_by_symbol: dict) -> str:
     return "\n".join(L)
 
 
-
+def run_pipeline(access_token: str, symbol: str, expiry_date: str = None, n_each_side: int = 10):
     """One call per symbol. expiry_date format: YYYY-MM-DD, or leave as
     None to auto-pick that symbol's own nearest real expiry (recommended
     when generating multiple symbols at once, since indices and stocks
