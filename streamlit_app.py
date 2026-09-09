@@ -178,6 +178,13 @@ else:
         st.session_state.results = results
         st.session_state.errors = errors
 
+        if not results and not errors:
+            st.warning(
+                "Fetch finished but returned nothing for any symbol, and no error "
+                "was recorded either — this shouldn't normally happen. Try again, "
+                "and if it repeats, check that your access token hasn't expired."
+            )
+
     # ── Show results, one tab per symbol ────────────────────────────────────
     if st.session_state.get("results"):
         results = st.session_state.results
