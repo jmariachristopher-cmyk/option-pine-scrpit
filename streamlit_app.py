@@ -13,6 +13,7 @@ no hand-editing strike counts, no copy-pasting numbers into a script.
 """
 
 import streamlit as st
+import pandas as pd
 
 from upstox_generator import get_login_url, get_access_token, run_pipeline
 
@@ -205,7 +206,22 @@ else:
                     m4.metric("Strikes pulled", len(result["data"]))
 
                     st.subheader("Computed table")
-                    st.code(result["csv_text"], language="text")
+                    df = pd.DataFrame(result["data"])
+                    df = df.rename(columns={
+                        "strike": "Strike", "ce": "CE", "pe": "PE",
+                        "avg": "Individual Average", "bl": "Boundary Line",
+                        "uce133": "Upper CE x1.33", "uce15": "Upper CE x1.5",
+                        "upe133": "Upper PE x1.33", "upe15": "Upper PE x1.5",
+                        "lce15": "Lower CE x1.5", "lce2": "Lower CE x2",
+                        "lpe15": "Lower PE x1.5", "lpe2": "Lower PE x2",
+                    })
+                    st.dataframe(df, use_container_width=True)
+                    st.download_button(
+                        f"Download {symbol}.csv",
+                        result["csv_text"],
+                        file_name=f"{symbol}.csv",
+                        key=f"csv_{symbol}",
+                    )
 
                     st.subheader("Pine Script — copy this into TradingView")
                     st.code(result["pine_text"], language="text")
