@@ -187,17 +187,21 @@ else:
             )
 
     # ── Show results, one tab per symbol ────────────────────────────────────
-    if st.session_state.get("results"):
-        results = st.session_state.results
-        errors = st.session_state.get("errors", {})
+    # IMPORTANT: check errors and results as separate top-level conditions.
+    # An empty dict ({}) is falsy in Python -- if EVERY symbol failed,
+    # results stays {}, so nesting the error display inside a check for
+    # results would silently swallow every failure with zero feedback shown.
+    # This was the actual root cause of every "blank after Done" report.
+    results = st.session_state.get("results", {})
+    errors = st.session_state.get("errors", {})
 
-        if errors:
-            for symbol, msg in errors.items():
-                st.error(f"[{symbol}] {msg}")
+    if errors:
+        for symbol, msg in errors.items():
+            st.error(f"[{symbol}] {msg}")
 
-        if results:
-            tabs = st.tabs(list(results.keys()))
-            for tab, (symbol, result) in zip(tabs, results.items()):
+    if results:
+        tabs = st.tabs(list(results.keys()))
+        for tab, (symbol, result) in zip(tabs, results.items()):
                 with tab:
                     m1, m2, m3, m4 = st.columns(4)
                     m1.metric("Spot", result["spot"])
