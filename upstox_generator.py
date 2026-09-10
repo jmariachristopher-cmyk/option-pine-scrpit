@@ -139,6 +139,7 @@ def debug_sample_fo_instrument():
 
 
 
+def resolve_instrument_key(symbol: str) -> str:
     if symbol.upper() in INDEX_INSTRUMENT_KEYS:
         return INDEX_INSTRUMENT_KEYS[symbol.upper()]
     return resolve_equity_instrument_key(symbol)
